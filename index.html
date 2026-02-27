@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern Student Management</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1; --primary-hover: #4f46e5;
+            --danger: #ef4444; --warning: #f59e0b;
+            --bg: #f8fafc; --text-main: #1e293b; --text-muted: #64748b;
+        }
+
+        body { 
+            font-family: 'Inter', sans-serif; background-color: var(--bg); 
+            color: var(--text-main); margin: 0; padding: 40px; 
+        }
+
+        .container { max-width: 1200px; margin: auto; }
+
+        /* Card styling to match target image */
+        .card { 
+            background: white; padding: 32px; border-radius: 16px; 
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            margin-bottom: 24px; 
+        }
+
+        h2 { margin-top: 0; margin-bottom: 24px; font-size: 20px; font-weight: 700; }
+
+        .grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); 
+            gap: 16px; 
+        }
+
+        /* Input styling */
+        input { 
+            padding: 12px 16px; border: 1px solid #e2e8f0; 
+            border-radius: 8px; font-size: 14px; outline: none; transition: 0.2s;
+        }
+        input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1); }
+
+        .btn-main { 
+            background: var(--primary); color: white; border: none; 
+            padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer;
+            transition: 0.2s; grid-column: span 2;
+        }
+        .btn-main:hover { background: var(--primary-hover); }
+
+        /* Table styling */
+        .table-container { overflow-x: auto; background: white; border-radius: 12px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { 
+            background: #f8fafc; padding: 16px; text-align: left; 
+            font-size: 11px; font-weight: 700; color: var(--text-muted);
+            text-transform: uppercase; letter-spacing: 0.05em;
+        }
+        td { padding: 16px; border-bottom: 1px solid #f1f5f9; font-size: 14px; }
+
+        .total-val { font-weight: 700; color: var(--primary); }
+
+        /* Action buttons */
+        .btn-edit { background: var(--warning); color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; margin-right: 4px;}
+        .btn-del { background: var(--danger); color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; }
+
+        .toast {
+            position: fixed; bottom: 20px; right: 20px; background: #10b981;
+            color: white; padding: 12px 24px; border-radius: 8px; display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="toast" class="toast">Action completed!</div>
+
+    <div class="card">
+        <h2>Manage Student Records</h2>
+        <div class="grid">
+            <input type="number" id="roll" placeholder="Roll No">
+            <input type="text" id="name" placeholder="Name">
+            <input type="text" id="class" placeholder="Class">
+            <input type="text" id="section" placeholder="Section">
+            <input type="text" id="grade" placeholder="Grade">
+            <input type="number" id="attendance" placeholder="Attendance">
+            <input type="number" id="english" placeholder="English">
+            <input type="number" id="hindi" placeholder="Hindi">
+            <input type="number" id="maths" placeholder="Maths">
+            <input type="number" id="evs" placeholder="EVS">
+            <input type="number" id="gk" placeholder="GK">
+            <button class="btn-main" id="submitBtn" onclick="saveStudent()">Add Student</button>
+        </div>
+    </div>
+
+    <div class="card" style="padding: 0;">
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Roll</th><th>Name</th><th>Class</th><th>Sec</th>
+                        <th>Grade</th><th>Attnd</th><th>Eng</th><th>Hin</th>
+                        <th>Mat</th><th>EVS</th><th>GK</th><th>Total</th><th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="studentBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API = 'http://localhost:3000/api/students';
+    let editId = null;
+
+    async function loadData() {
+        try {
+            const res = await fetch(API);
+            const students = await res.json();
+            document.getElementById('studentBody').innerHTML = students.map(s => `
+                <tr>
+                    <td>${s['Roll no']}</td><td>${s.Name}</td><td>${s.Class}</td><td>${s.Section}</td>
+                    <td>${s.Grade}</td><td>${s.Attendance}</td><td>${s.English}</td><td>${s.Hindi}</td>
+                    <td>${s.Maths}</td><td>${s.EVS}</td><td>${s.GK}</td>
+                    <td class="total-val">${s.Total || 0}</td>
+                    <td>
+                        <button class="btn-edit" onclick='prepEdit(${JSON.stringify(s)})'>Edit</button>
+                        <button class="btn-del" onclick="deleteStudent('${s._id}')">Delete</button>
+                    </td>
+                </tr>
+            `).join('');
+        } catch (e) { console.error("Verify backend is running at :3000"); }
+    }
+
+    async function saveStudent() {
+        const data = {
+            "Roll no": document.getElementById('roll').value,
+            Name: document.getElementById('name').value,
+            Class: document.getElementById('class').value,
+            Section: document.getElementById('section').value,
+            Grade: document.getElementById('grade').value,
+            Attendance: document.getElementById('attendance').value,
+            English: document.getElementById('english').value,
+            Hindi: document.getElementById('hindi').value,
+            Maths: document.getElementById('maths').value,
+            EVS: document.getElementById('evs').value,
+            GK: document.getElementById('gk').value
+        };
+
+        const method = editId ? 'PUT' : 'POST';
+        const url = editId ? `${API}/${editId}` : API;
+
+        await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        showToast(editId ? "Updated Successfully" : "Added Successfully");
+        clearForm();
+        loadData();
+    }
+
+    function prepEdit(s) {
+        editId = s._id;
+        document.getElementById('roll').value = s['Roll no'];
+        document.getElementById('name').value = s.Name;
+        document.getElementById('class').value = s.Class;
+        document.getElementById('section').value = s.Section;
+        document.getElementById('grade').value = s.Grade;
+        document.getElementById('attendance').value = s.Attendance;
+        document.getElementById('english').value = s.English;
+        document.getElementById('hindi').value = s.Hindi;
+        document.getElementById('maths').value = s.Maths;
+        document.getElementById('evs').value = s.EVS;
+        document.getElementById('gk').value = s.GK;
+        document.getElementById('submitBtn').innerText = "Update Student";
+    }
+
+    async function deleteStudent(id) {
+        if(confirm("Confirm Delete?")) {
+            await fetch(`${API}/${id}`, { method: 'DELETE' });
+            showToast("Deleted Successfully");
+            loadData();
+        }
+    }
+
+    function clearForm() {
+        editId = null;
+        document.querySelectorAll('input').forEach(i => i.value = '');
+        document.getElementById('submitBtn').innerText = "Add Student";
+    }
+
+    function showToast(msg) {
+        const t = document.getElementById('toast');
+        t.innerText = msg; t.style.display = 'block';
+        setTimeout(() => t.style.display = 'none', 3000);
+    }
+
+    loadData();
+</script>
+</body>
+</html>
